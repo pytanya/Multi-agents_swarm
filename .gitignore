@@ -1,0 +1,22 @@
+# Environment variables (API keys, secrets)
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# Output files (generated articles)
+output/*.md
+output/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db

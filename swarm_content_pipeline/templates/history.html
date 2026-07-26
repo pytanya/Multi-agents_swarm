@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="history-page">
+    <div class="page-header">
+        <h1 class="page-title">История статей</h1>
+        <p class="page-subtitle">Все сгенерированные статьи</p>
+    </div>
+
+    <div class="articles-table-wrapper">
+        {% if articles %}
+        <table class="articles-table">
+            <thead>
+                <tr>
+                    <th class="col-title">Название</th>
+                    <th class="col-date">Дата</th>
+                    <th class="col-size">Размер</th>
+                    <th class="col-actions">Действия</th>
+                </tr>
+            </thead>
+            <tbody id="articles-tbody">
+                {% for article in articles %}
+                <tr class="article-row" id="row-{{ article.filename | replace('.', '_') | replace('/', '_') }}">
+                    <td class="col-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="file-icon">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        <a href="/article/{{ article.filename }}" class="article-link">{{ article.title }}</a>
+                    </td>
+                    <td class="col-date">{{ article.date }}</td>
+                    <td class="col-size">{{ (article.size / 1024) | round(1) }} KB</td>
+                    <td class="col-actions">
+                        <a href="/article/{{ article.filename }}" class="btn btn-ghost btn-sm" title="Просмотр">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon-sm">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </a>
+                        <button
+                            class="btn btn-ghost btn-sm btn-delete-article"
+                            title="Удалить статью"
+                            data-filename="{{ article.filename }}"
+                            onclick="deleteArticle('{{ article.filename }}', this)"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon-sm" style="color:var(--accent-red,#ef4444)">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                <line x1="14" y1="11" x2="14" y2="17"/>
+                            </svg>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" class="empty-icon">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            <h3>Статей пока нет</h3>
+            <p>Запустите пайплайн на главной странице, чтобы сгенерировать первую статью.</p>
+            <a href="/" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                    <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+                <span>Создать статью</span>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- История запусков пайплайна -->
+    <div class="history-tasks" id="history-tasks">
+        <h2 class="section-title">История запусков</h2>
+        <div class="tasks-list" id="tasks-list">
+            <div class="tasks-placeholder">Загрузка...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Диалог подтверждения удаления -->
+<div id="delete-confirm-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-container" style="max-width:420px;">
+        <div class="modal-header">
+            <div class="modal-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22" style="margin-right:10px;color:var(--accent-red,#ef4444);flex-shrink:0;">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                </svg>
+                <div>
+                    <h3>Удалить статью?</h3>
+                    <p class="modal-agent-desc" id="delete-filename-display"></p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-body" style="padding:1rem 1.5rem;">
+            <p style="color:var(--text-secondary,#94a3b8);">Это действие необратимо. Файл будет удалён с диска.</p>
+        </div>
+        <div class="modal-footer" style="display:flex;gap:.75rem;justify-content:flex-end;padding:1rem 1.5rem;">
+            <button class="btn btn-ghost" onclick="closeDeleteModal()">Отмена</button>
+            <button class="btn btn-danger" id="delete-confirm-btn">Удалить</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно: причина отклонения -->
+<div id="rejection-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-container" style="max-width:520px;">
+        <div class="modal-header">
+            <div class="modal-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22" style="margin-right:10px;color:var(--accent-red,#ef4444);flex-shrink:0;">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="15" y1="9" x2="9" y2="15"/>
+                    <line x1="9" y1="9" x2="15" y2="15"/>
+                </svg>
+                <div>
+                    <h3>Причина отклонения</h3>
+                    <p class="modal-agent-desc" id="rejection-topic-display"></p>
+                </div>
+            </div>
+            <button class="btn btn-ghost modal-close" onclick="document.getElementById('rejection-modal').style.display='none'">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body" style="padding:1.25rem 1.5rem;">
+            <div id="rejection-reason-text" style="
+                background:rgba(239,68,68,.08);
+                border:1px solid rgba(239,68,68,.25);
+                border-radius:8px;
+                padding:1rem 1.25rem;
+                color:var(--text-primary,#e2e8f0);
+                font-size:.95rem;
+                line-height:1.6;
+                white-space:pre-wrap;
+                word-break:break-word;
+            "></div>
+        </div>
+        <div class="modal-footer" style="display:flex;justify-content:flex-end;padding:.75rem 1.5rem;">
+            <button class="btn btn-primary" onclick="document.getElementById('rejection-modal').style.display='none'">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// Удаление статьи
+// ============================================================
+let _pendingDeleteFilename = null;
+let _pendingDeleteRow = null;
+
+function deleteArticle(filename, btn) {
+    _pendingDeleteFilename = filename;
+    _pendingDeleteRow = btn.closest('tr');
+    document.getElementById('delete-filename-display').textContent = filename;
+    document.getElementById('delete-confirm-modal').style.display = 'flex';
+}
+
+function closeDeleteModal() {
+    document.getElementById('delete-confirm-modal').style.display = 'none';
+    _pendingDeleteFilename = null;
+    _pendingDeleteRow = null;
+}
+
+document.getElementById('delete-confirm-btn').addEventListener('click', async () => {
+    if (!_pendingDeleteFilename) return;
+    const btn = document.getElementById('delete-confirm-btn');
+    btn.disabled = true;
+    btn.textContent = 'Удаление...';
+    try {
+        const res = await fetch(`/api/articles/${encodeURIComponent(_pendingDeleteFilename)}`, { method: 'DELETE' });
+        if (res.ok) {
+            // Анимируем удаление строки
+            if (_pendingDeleteRow) {
+                _pendingDeleteRow.style.transition = 'opacity .3s, transform .3s';
+                _pendingDeleteRow.style.opacity = '0';
+                _pendingDeleteRow.style.transform = 'translateX(20px)';
+                setTimeout(() => _pendingDeleteRow.remove(), 320);
+            }
+            closeDeleteModal();
+        } else {
+            const data = await res.json().catch(() => ({}));
+            alert('Ошибка удаления: ' + (data.detail || res.status));
+        }
+    } catch(e) {
+        alert('Сетевая ошибка: ' + e);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Удалить';
+    }
+});
+
+// ============================================================
+// История запусков с причиной отклонения
+// ============================================================
+const STATUS_LABELS = {
+    running:   { label: 'В работе',   cls: 'status-running'  },
+    completed: { label: 'Готово',     cls: 'status-completed'},
+    error:     { label: 'Ошибка',     cls: 'status-error'    },
+    cancelled: { label: 'Отменено',   cls: 'status-cancelled'},
+    rejected:  { label: 'Отклонено', cls: 'status-error'    },
+};
+
+function formatDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function showRejectionReason(topic, reason) {
+    document.getElementById('rejection-topic-display').textContent = topic;
+    document.getElementById('rejection-reason-text').textContent = reason || 'Причина не указана.';
+    document.getElementById('rejection-modal').style.display = 'flex';
+}
+
+async function loadTasks() {
+    const list = document.getElementById('tasks-list');
+    try {
+        const res = await fetch('/api/history');
+        const tasks = await res.json();
+        if (!tasks.length) {
+            list.innerHTML = '<div class="tasks-placeholder">Запусков пока нет.</div>';
+            return;
+        }
+        list.innerHTML = tasks.map(t => {
+            const st = STATUS_LABELS[t.status] || { label: t.status, cls: '' };
+            const isRejected = t.status === 'rejected';
+            const reason = t.rejection_reason;
+            const rejBtn = (isRejected && reason)
+                ? `<button class="btn btn-ghost btn-sm" style="color:var(--accent-red,#ef4444);font-size:.75rem;"
+                       onclick='showRejectionReason(${JSON.stringify(t.topic)}, ${JSON.stringify(reason)})'>
+                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" style="margin-right:4px;">
+                           <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                       </svg>Причина</button>`
+                : '';
+            const resultLink = (t.result_path && t.status === 'completed')
+                ? `<a href="/article/${encodeURIComponent(t.result_path.split(/[\\/]/).pop())}" class="btn btn-ghost btn-sm" style="font-size:.75rem;">Открыть</a>`
+                : '';
+            return `
+            <div class="task-item">
+                <div class="task-item-header">
+                    <span class="task-topic">${t.topic || '—'}</span>
+                    <span class="task-status ${st.cls}">${st.label}</span>
+                </div>
+                <div class="task-item-meta">
+                    <span class="task-date">${formatDate(t.created_at)}</span>
+                    ${t.error ? `<span class="task-error" title="${t.error}">⚠ ${t.error.slice(0,60)}</span>` : ''}
+                </div>
+                ${(rejBtn || resultLink) ? `<div class="task-item-actions">${resultLink}${rejBtn}</div>` : ''}
+            </div>`;
+        }).join('');
+    } catch(e) {
+        list.innerHTML = `<div class="tasks-placeholder">Ошибка загрузки: ${e}</div>`;
+    }
+}
+
+// ============================================================
+// Стили для новых элементов
+// ============================================================
+const style = document.createElement('style');
+style.textContent = `
+.task-item { background:var(--surface-2,#1e293b); border:1px solid var(--border,#334155); border-radius:10px; padding:.875rem 1rem; margin-bottom:.6rem; }
+.task-item-header { display:flex; justify-content:space-between; align-items:center; gap:.5rem; margin-bottom:.35rem; }
+.task-topic { font-size:.9rem; font-weight:500; color:var(--text-primary,#e2e8f0); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.task-item-meta { display:flex; gap:1rem; align-items:center; flex-wrap:wrap; }
+.task-date { font-size:.75rem; color:var(--text-secondary,#94a3b8); }
+.task-error { font-size:.75rem; color:var(--accent-red,#ef4444); max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.task-item-actions { display:flex; gap:.4rem; margin-top:.5rem; }
+.status-running   { background:rgba(59,130,246,.15); color:#60a5fa; border:1px solid rgba(59,130,246,.3); padding:2px 10px; border-radius:20px; font-size:.72rem; font-weight:600; white-space:nowrap; }
+.status-completed { background:rgba(34,197,94,.15);  color:#4ade80; border:1px solid rgba(34,197,94,.3);  padding:2px 10px; border-radius:20px; font-size:.72rem; font-weight:600; white-space:nowrap; }
+.status-error     { background:rgba(239,68,68,.15);  color:#f87171; border:1px solid rgba(239,68,68,.3);  padding:2px 10px; border-radius:20px; font-size:.72rem; font-weight:600; white-space:nowrap; }
+.status-cancelled { background:rgba(148,163,184,.12); color:#94a3b8; border:1px solid rgba(148,163,184,.25); padding:2px 10px; border-radius:20px; font-size:.72rem; font-weight:600; white-space:nowrap; }
+.btn-delete-article:hover svg { color:#f87171 !important; }
+.modal-overlay { align-items:center; justify-content:center; }
+`;
+document.head.appendChild(style);
+
+loadTasks();
+</script>
+{% endblock %}

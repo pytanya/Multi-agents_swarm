@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multi-agent-pipeline
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - PORT=8080
+      - HOST=0.0.0.0
+    volumes:
+      - ./output:/app/output
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
