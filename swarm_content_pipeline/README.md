@@ -143,7 +143,7 @@ pipeline_runner → utils ← workflow
 
 1. Перейдите в директорию проекта:
    ```bash
-   cd d:/tatia/Обучение_ОТУС/Multi-agents_swarm
+   cd Multi-agents_swarm
    ```
 
 2. Установите зависимости:
@@ -158,10 +158,10 @@ pipeline_runner → utils ← workflow
    LLM_MODEL=deepseek/deepseek-v4-flash
    ```
 
-   Поддерживаемые провайдеры:
-   - **RouterAI** (https://routerai.ru) — приоритет
-   - **OpenRouter** (https://openrouter.ai) — fallback
-   - **OpenAI** — если указан `OPENAI_API_KEY`
+   Провайдер LLM:
+   - **RouterAI** (https://routerai.ru) — **основной и единственный рабочий вариант**. Настоятельно рекомендуется.
+   - **OpenRouter** (https://openrouter.ai) — формально закодирован как fallback в `config.py`, но **на практике может не работать** (не все модели доступны). Не рассчитывайте на него как на надёжный резерв.
+   - **OpenAI** — если указан `OPENAI_API_KEY` (запасной вариант).
 
 4. Настройте Yandex Search API (основной поисковик):
    - Перейдите в Yandex Cloud (https://cloud.yandex.com)
@@ -291,6 +291,7 @@ python swarm_content_pipeline/main.py "Виды уязвимостей при и
 - [Yandex Search API v2](https://cloud.yandex.com/docs/search-api/) — основной поиск (до 10 000 запросов/мес бесплатно)
 - [DuckDuckGo Search](https://pypi.org/project/duckduckgo-search/) — дополнительный поиск без API-ключа
 - [Tavily Search API](https://docs.tavily.com/) — резервный поиск
-- **deepseek/deepseek-v4-flash** — языковая модель (через RouterAI / OpenRouter)
-- **RouterAI / OpenRouter** — РФ-дружественные прокси для LLM
+- **deepseek/deepseek-v4-flash** — языковая модель (через RouterAI)
+- **RouterAI** (https://routerai.ru) — РФ-дружественный прокси для LLM (рекомендуется)
+- **OpenRouter** (https://openrouter.ai) — альтернативный прокси (может работать нестабильно)
 - **FastAPI + SSE** — веб-интерфейс с событиями в реальном времени
